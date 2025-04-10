@@ -190,7 +190,10 @@ abstract class ApiService implements InterceptorContract {
   Future<List<EcDevice>> getDevicesForAccount(String? accountId);
   Future<TreeNode<dynamic>> getDeviceTree(bool forceRefresh);
   Future<List<RoutingRule>> getRoutingRules(bool forceRefresh);
+  Future<List<RoutingRule>> getFilteredRoutingRules();
   Future<bool> putRoutingRules(List<RoutingRule> rules);
+  Future<bool> tunVpnConnect(String accountId, String deviceId);
+  Future<bool> tunVpnDisconnect(String accountId, String deviceId);
 }
 
 class ApiServiceImpl extends ApiService {
@@ -834,6 +837,15 @@ class ApiServiceImpl extends ApiService {
   }
 
   @override
+  Future<List<RoutingRule>> getFilteredRoutingRules() async {
+    List<RoutingRule> result = await getRoutingRules(false);
+    result.removeWhere(
+      (element) => element.userId != currentUser!.authInfo!.accessToken.userId,
+    );
+    return result;
+  }
+
+  @override
   Future<List<RoutingRule>> getRoutingRules(bool forceRefresh) async {
     if (forceRefresh) {
       routingRules = [];
@@ -917,6 +929,30 @@ class ApiServiceImpl extends ApiService {
       jsonEncode(target.toJson()),
     );
     if (putResponse.statusCode == 200) {
+      return Future.value(true);
+    } else {
+      return Future.value(false);
+    }
+  }
+
+  @override
+  Future<bool> tunVpnConnect(String accountId, String deviceId) async {
+    final response = await doPost(
+      path: '/v1/$accountId/devices/$deviceId/vpn/_connect',
+    );
+    if (response.statusCode == 200) {
+      return Future.value(true);
+    } else {
+      return Future.value(false);
+    }
+  }
+
+  @override
+  Future<bool> tunVpnDisconnect(String accountId, String deviceId) async {
+    final response = await doPost(
+      path: '/v1/$accountId/devices/$deviceId/vpn/_disconnect',
+    );
+    if (response.statusCode == 200) {
       return Future.value(true);
     } else {
       return Future.value(false);

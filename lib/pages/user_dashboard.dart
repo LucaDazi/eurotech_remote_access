@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:remote_access/pages/admin_dashboard.dart';
 import 'package:remote_access/model/user.dart';
+import 'package:remote_access/pages/remote_devices_list.dart';
 
 import 'package:remote_access/pages/settings.dart';
 
 const List<DashboardDestinations> destinations = <DashboardDestinations>[
+  DashboardDestinations(
+    'Remote Devices',
+    Icon(Icons.router_outlined),
+    Icon(Icons.router),
+  ),
   DashboardDestinations(
     'Settings',
     Icon(Icons.settings_outlined),
@@ -115,6 +121,8 @@ class _UserDashboardState extends State<UserDashboard> {
   Widget _buildDestinationWidget(int screenIndex) {
     switch (screenIndex) {
       case 0:
+        return RemoteDevicesPage();
+      case 1:
         return SettingsPage();
       default:
         return Text('Current page: $screenIndex');

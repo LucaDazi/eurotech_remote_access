@@ -268,7 +268,7 @@ class _RulesPageState extends State<RulesPage> {
     );
   }
 
-  Row _getNewRulePanel() {
+  Row _getNewRulePanel(void Function(void Function()) setState) {
     return Row(
       children: [
         DropdownButton<EcUser>(
@@ -350,7 +350,7 @@ class _RulesPageState extends State<RulesPage> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              content: Form(child: _getNewRulePanel()),
+              content: Form(child: _getNewRulePanel(setState)),
               title: Text('New Remote Access Rule'),
               actions: <Widget>[
                 ElevatedButton(
@@ -373,6 +373,7 @@ class _RulesPageState extends State<RulesPage> {
                       downstreamDeviceName:
                           raDropdownValue.downstreamDevice.name,
                       downstreamDeviceIp: raDropdownValue.downstreamDevice.iPv4,
+                      namespace: raDropdownValue.downstreamDevice.namespace!,
                     );
                     Navigator.of(context).pop(rr);
                   },

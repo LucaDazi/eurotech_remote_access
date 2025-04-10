@@ -14,6 +14,7 @@ class RoutingRule {
     required this.deviceId,
     required this.downstreamDeviceName,
     required this.downstreamDeviceIp,
+    required this.namespace,
     this.account,
     this.device,
     this.user,
@@ -25,6 +26,7 @@ class RoutingRule {
   String deviceId;
   String downstreamDeviceName;
   String downstreamDeviceIp;
+  String namespace;
   @JsonKey(includeFromJson: false, includeToJson: false)
   EcDevice? device;
   @JsonKey(includeFromJson: false, includeToJson: false)

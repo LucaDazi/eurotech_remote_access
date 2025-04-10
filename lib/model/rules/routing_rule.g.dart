@@ -13,6 +13,7 @@ RoutingRule _$RoutingRuleFromJson(Map<String, dynamic> json) => RoutingRule(
   deviceId: json['deviceId'] as String,
   downstreamDeviceName: json['downstreamDeviceName'] as String,
   downstreamDeviceIp: json['downstreamDeviceIp'] as String,
+  namespace: json['namespace'] as String,
 );
 
 Map<String, dynamic> _$RoutingRuleToJson(RoutingRule instance) =>
@@ -23,4 +24,5 @@ Map<String, dynamic> _$RoutingRuleToJson(RoutingRule instance) =>
       'deviceId': instance.deviceId,
       'downstreamDeviceName': instance.downstreamDeviceName,
       'downstreamDeviceIp': instance.downstreamDeviceIp,
+      'namespace': instance.namespace,
     };
