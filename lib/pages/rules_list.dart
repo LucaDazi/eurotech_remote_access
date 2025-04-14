@@ -4,7 +4,6 @@ import 'package:remote_access/model/ec_user.dart';
 import 'package:remote_access/model/remote_access_device.dart';
 import 'package:remote_access/model/rules/routing_rule.dart';
 import 'package:remote_access/services/api_service.dart';
-import 'package:remote_access/services/vpn_service.dart';
 
 class RulesPage extends StatefulWidget {
   const RulesPage({super.key});
@@ -53,213 +52,246 @@ class _RulesPageState extends State<RulesPage> {
               ),
             ),
           ),
-          Card(
-            margin: EdgeInsets.only(left: 16, right: 8, bottom: 8),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Current Downstream Devices',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Flexible(
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Current Downstream Devices',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(width: double.infinity),
+                          ListView.builder(
+                            itemBuilder: (context, index) {
+                              RemoteAccessDevice rad =
+                                  getIt<ApiService>()
+                                      .getRemoteAccessDevices()[index];
+                              return ListTile(
+                                title: Text(
+                                  '${rad.downstreamDevice.name} (${rad.downstreamDevice.namespace})',
+                                ),
+                                subtitle: Text(
+                                  '${rad.account.name}/${rad.device.displayName}',
+                                ),
+                              );
+                            },
+                            itemCount:
+                                getIt<ApiService>()
+                                    .getRemoteAccessDevices()
+                                    .length,
+                            shrinkWrap: true,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  SizedBox(width: double.infinity),
-                  ListView.builder(
-                    itemBuilder: (context, index) {
-                      RemoteAccessDevice rad =
-                          getIt<ApiService>().getRemoteAccessDevices()[index];
-                      return ListTile(
-                        title: Text(
-                          '${rad.downstreamDevice.name} (${rad.downstreamDevice.namespace})',
-                        ),
-                        subtitle: Text(
-                          '${rad.account.name}/${rad.device.displayName}',
-                        ),
-                      );
-                    },
-                    itemCount:
-                        getIt<ApiService>().getRemoteAccessDevices().length,
-                    shrinkWrap: true,
+                ),
+                Flexible(
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Current Remote Users',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(width: double.infinity),
+                          ListView.builder(
+                            itemBuilder: (context, index) {
+                              EcUser rau =
+                                  getIt<ApiService>()
+                                      .getRemoteAccessUsers()[index];
+                              return ListTile(
+                                title: Text(rau.displayName!),
+                                subtitle: Text(rau.email!),
+                              );
+                            },
+                            itemCount:
+                                getIt<ApiService>()
+                                    .getRemoteAccessUsers()
+                                    .length,
+                            shrinkWrap: true,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          Card(
-            margin: EdgeInsets.only(left: 16, right: 8, bottom: 8),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Current Remote Users',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(width: double.infinity),
-                  ListView.builder(
-                    itemBuilder: (context, index) {
-                      EcUser rau =
-                          getIt<ApiService>().getRemoteAccessUsers()[index];
-                      return ListTile(
-                        title: Text(rau.displayName!),
-                        subtitle: Text(rau.email!),
-                      );
-                    },
-                    itemCount:
-                        getIt<ApiService>().getRemoteAccessUsers().length,
-                    shrinkWrap: true,
-                  ),
-                ],
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
             ),
-          ),
-          Card(
-            margin: EdgeInsets.only(left: 16, right: 8, bottom: 8),
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text('Currently available remote access rules'),
-                      SizedBox(width: 32.0),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          await _createNewRule();
-                        },
-                        icon: Icon(Icons.add),
-                        label: Text('Create new rule'),
-                      ),
-                      SizedBox(width: 32.0),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          setState(() {
-                            _isUpdating = true;
-                          });
-                          await getIt<ApiService>().getRoutingRules(true);
-                          setState(() {
-                            _isUpdating = false;
-                          });
-                        },
-                        icon: Icon(Icons.refresh),
-                        label: Text('Refresh'),
-                      ),
-                      Expanded(child: Container()),
-                      SizedBox(
-                        width: 200,
-                        height: 40,
-                        child: TextField(
-                          controller: _filterController,
-                          onChanged: (value) {
-                            setState(() {}); // Implement filter logic here
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('Currently available remote access rules'),
+                        SizedBox(width: 32.0),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            await _createNewRule();
                           },
-                          decoration: InputDecoration(
-                            hintText: 'Filter',
-                            prefixIcon: Icon(Icons.search),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
+                          icon: Icon(Icons.add),
+                          label: Text('Create new rule'),
+                        ),
+                        SizedBox(width: 32.0),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            setState(() {
+                              _isUpdating = true;
+                            });
+                            await getIt<ApiService>().getRoutingRules(true);
+                            setState(() {
+                              _isUpdating = false;
+                            });
+                          },
+                          icon: Icon(Icons.refresh),
+                          label: Text('Refresh'),
+                        ),
+                        Expanded(child: Container()),
+                        SizedBox(
+                          width: 200,
+                          height: 40,
+                          child: TextField(
+                            controller: _filterController,
+                            onChanged: (value) {
+                              setState(() {}); // Implement filter logic here
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Filter',
+                              prefixIcon: Icon(Icons.search),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
                             ),
-                            filled: true,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(width: double.infinity),
-                  FutureBuilder<List<RoutingRule>>(
-                    future: getIt<ApiService>().getRoutingRules(false),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData || _isUpdating) {
-                        return CircularProgressIndicator();
-                      }
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: snapshot.data!.length,
-                        itemBuilder: (context, index) {
-                          debugPrint(
-                            'Rebuilding list! Item count: ${snapshot.data!.length}',
-                          );
-                          RoutingRule rr = snapshot.data![index];
-                          final isHovered = _hoveredIndices.contains(index);
-                          String accountName =
-                              rr.account != null
-                                  ? rr.account!.name
-                                  : rr.accountId;
-                          String deviceId =
-                              rr.device != null
-                                  ? (rr.device!.displayName != null
-                                      ? rr.device!.displayName!
-                                      : rr.device!.clientId)
-                                  : rr.deviceId;
-                          return Card(
-                            elevation: 8.0,
-                            child: MouseRegion(
-                              onEnter: (event) {
-                                setState(() {
-                                  _hoveredIndices.add(index);
-                                });
-                              },
-                              onExit: (event) {
-                                setState(() {
-                                  _hoveredIndices.remove(index);
-                                });
-                              },
-                              child: Column(
-                                children: [
-                                  ListTile(
-                                    title: Text(
-                                      '$accountName/$deviceId/${rr.downstreamDeviceName} (${rr.downstreamDeviceIp})',
-                                    ),
-                                    subtitle: Text(
-                                      rr.user != null
-                                          ? '${rr.user!.name.replaceFirst('RA_', '')} (${rr.user!.displayName} - ${rr.user!.email})'
-                                          : rr.userId,
-                                    ),
-                                    leading: Switch(
-                                      value: rr.enabled,
-                                      onChanged: (value) {},
-                                    ),
-                                  ),
-                                  if (isHovered)
-                                    Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          ElevatedButton.icon(
-                                            onPressed: () async {},
-                                            label:
-                                                _isUpdating
-                                                    ? CircularProgressIndicator()
-                                                    : Icon(Icons.toggle_on),
-                                          ),
-                                          SizedBox(width: 8.0),
-                                          ElevatedButton.icon(
-                                            onPressed: () async {},
-                                            label:
-                                                _isUpdating
-                                                    ? CircularProgressIndicator()
-                                                    : Icon(Icons.delete),
-                                          ),
-                                        ],
+                      ],
+                    ),
+                    SizedBox(width: double.infinity),
+                    FutureBuilder<List<RoutingRule>>(
+                      future: getIt<ApiService>().getRoutingRules(false),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData || _isUpdating) {
+                          return CircularProgressIndicator();
+                        }
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: snapshot.data!.length,
+                          itemBuilder: (context, index) {
+                            RoutingRule rr = snapshot.data![index];
+                            final isHovered = _hoveredIndices.contains(index);
+                            String accountName =
+                                rr.account != null
+                                    ? rr.account!.name
+                                    : rr.accountId;
+                            String deviceId =
+                                rr.device != null
+                                    ? (rr.device!.displayName != null
+                                        ? rr.device!.displayName!
+                                        : rr.device!.clientId)
+                                    : rr.deviceId;
+                            return Card(
+                              elevation: 8.0,
+                              child: MouseRegion(
+                                onEnter: (event) {
+                                  setState(() {
+                                    _hoveredIndices.add(index);
+                                  });
+                                },
+                                onExit: (event) {
+                                  setState(() {
+                                    _hoveredIndices.remove(index);
+                                  });
+                                },
+                                child: Column(
+                                  children: [
+                                    ListTile(
+                                      title: Text(
+                                        '$accountName/$deviceId/${rr.downstreamDeviceName} (${rr.downstreamDeviceIp})',
+                                      ),
+                                      subtitle: Text(
+                                        rr.user != null
+                                            ? '${rr.user!.name.replaceFirst('RA_', '')} (${rr.user!.displayName} - ${rr.user!.email})'
+                                            : rr.userId,
+                                      ),
+                                      leading: Switch(
+                                        value: rr.enabled,
+                                        onChanged: (value) {},
                                       ),
                                     ),
-                                ],
+                                    if (isHovered)
+                                      Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            ElevatedButton.icon(
+                                              onPressed: () async {
+                                                setState(() {
+                                                  rr.enabled = !rr.enabled;
+                                                });
+                                                await getIt<ApiService>()
+                                                    .putRoutingRules(
+                                                      snapshot.data!,
+                                                    );
+                                              },
+                                              label:
+                                                  _isUpdating
+                                                      ? CircularProgressIndicator()
+                                                      : Icon(Icons.toggle_on),
+                                            ),
+                                            SizedBox(width: 8.0),
+                                            ElevatedButton.icon(
+                                              onPressed: () async {
+                                                snapshot.data!.remove(rr);
+                                                await getIt<ApiService>()
+                                                    .putRoutingRules(
+                                                      snapshot.data!,
+                                                    );
+                                                setState(() {});
+                                              },
+                                              label:
+                                                  _isUpdating
+                                                      ? CircularProgressIndicator()
+                                                      : Icon(Icons.delete),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -305,24 +337,6 @@ class _RulesPageState extends State<RulesPage> {
               raDropdownValue = value!;
             });
           },
-        ),
-        SizedBox(width: 32.0),
-        SizedBox(width: 32.0),
-        ElevatedButton(
-          onPressed: () {
-            getIt<VpnService>().testConnection(
-              'C:\\Program Files\\OpenVPN\\config\\ec5_sandbox_training.ovpn',
-              'V:\\Documenti\\Lavoro\\Eurotech\\src\\eurotech_remote_access\\test_cred',
-            );
-          },
-          child: Text('TEST VPN'),
-        ),
-        SizedBox(width: 32.0),
-        ElevatedButton(
-          onPressed: () {
-            getIt<VpnService>().terminateVpnConnection();
-          },
-          child: Text('CLOSE VPN'),
         ),
       ],
     );

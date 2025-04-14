@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:remote_access/main.dart';
 import 'package:remote_access/model/rules/routing_rule.dart';
 import 'package:remote_access/services/api_service.dart';
+import 'package:remote_access/widgets/routing_rule_card.dart';
 
 class RemoteDevicesPage extends StatefulWidget {
   const RemoteDevicesPage({super.key});
@@ -11,6 +12,11 @@ class RemoteDevicesPage extends StatefulWidget {
 }
 
 class _RemoteDevicesPageState extends State<RemoteDevicesPage> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -22,51 +28,32 @@ class _RemoteDevicesPageState extends State<RemoteDevicesPage> {
                 children: [
                   Card(
                     child: ListTile(
-                      title: Text('Title'),
-                      subtitle: Text('Subtitle'),
+                      title: Text(
+                        'Logged in as ${getIt<ApiService>().currentUser!.name}',
+                      ),
+                      subtitle: Text(
+                        '${getIt<ApiService>().currentUser!.email}',
+                      ),
                     ),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
+                  Column(
                     children: [
-                      FilledButton(
-                        onPressed: () async {
-                          final rrs =
-                              await getIt<ApiService>()
-                                  .getFilteredRoutingRules();
-                          for (RoutingRule rr in rrs) {
-                            debugPrint(
-                              'Routing Rule: ${rr.userId} to ${rr.namespace}/${rr.downstreamDeviceName} (${rr.downstreamDeviceIp})',
-                            );
+                      FutureBuilder<List<RoutingRule>>(
+                        future: getIt<ApiService>().getFilteredRoutingRules(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return Center(child: CircularProgressIndicator());
                           }
-                        },
-                        child: Text('Load rules'),
-                      ),
-                      SizedBox(width: 16.0),
-                      FilledButton(
-                        onPressed: () async {
-                          final rrs =
-                              await getIt<ApiService>()
-                                  .getFilteredRoutingRules();
-                          await getIt<ApiService>().tunVpnConnect(
-                            rrs.first.accountId,
-                            rrs.first.deviceId,
+                          return ListView.builder(
+                            itemCount: snapshot.data!.length,
+                            shrinkWrap: true,
+                            itemBuilder: (context, index) {
+                              return RoutingRuleCard(
+                                routingRule: snapshot.data![index],
+                              );
+                            },
                           );
                         },
-                        child: Text('VPN Connect'),
-                      ),
-                      SizedBox(width: 16.0),
-                      FilledButton(
-                        onPressed: () async {
-                          final rrs =
-                              await getIt<ApiService>()
-                                  .getFilteredRoutingRules();
-                          await getIt<ApiService>().tunVpnDisconnect(
-                            rrs.first.accountId,
-                            rrs.first.deviceId,
-                          );
-                        },
-                        child: Text('VPN Disconnect'),
                       ),
                     ],
                   ),

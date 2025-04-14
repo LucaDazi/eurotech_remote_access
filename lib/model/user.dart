@@ -18,6 +18,7 @@ class User {
   final AuthInfo? authInfo;
 
   bool get isLoggedIn => loggedIn;
+
   String getType() {
     switch (type) {
       case UserType.admin:

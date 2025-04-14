@@ -1,0 +1,31 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "eurotech_remote_access",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "flutterMode": "debug",
+            "args": [
+                "-a",
+                "eth-ra://open?token=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjAxOTYzNDMyLTg5MzctMjAzMi1jNWYwLTllZTQ2NDkwZWUwMiIsImFwaUtleSI6InVpaU1TRlVKci9TcGVjNHpDVld2dDU5TVpucmlJWCtsWUh4SThyYkQiLCJjcmVkZW50aWFscyI6eyJ1c2VyIjoiUkFfcmVtb3RlX2FjY2Vzc18xIiwicGFzc3dvcmQiOiJqS3slNS5wY2Y2RjAwKSFoIn0sImlhdCI6MTc0NDYzMjQ0OSwic3ViIjoiUmVtb3RlIEFjY2VzcyBUb2tlbiIsImlzcyI6ImNvbS5ldXJvdGVjaC5yZW1vdGUuYWNjZXNzIn0.88E6rjuotSPjAPOEsURBb_N8gi8-AfXOzSUZTqKPgD2Yow329-A7QV2CMDjXgQYFxtEQL-Iqp4srs_kDE2zvcw"
+            ]
+        },
+        {
+            "name": "eurotech_remote_access (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "eurotech_remote_access (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        }
+    ]
+}

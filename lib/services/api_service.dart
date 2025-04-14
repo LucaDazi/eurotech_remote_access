@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:core';
 import 'dart:io';
 
 import 'package:animated_tree_view/listenable_node/listenable_node.dart';
@@ -22,9 +23,15 @@ import 'package:remote_access/model/ec_credential_result.dart';
 import 'package:remote_access/model/ec_credentials_result.dart';
 import 'package:remote_access/model/ec_device.dart';
 import 'package:remote_access/model/ec_devices_result.dart';
+import 'package:remote_access/model/ec_instance.dart';
 import 'package:remote_access/model/ec_roles_result.dart';
 import 'package:remote_access/model/ec_user.dart';
 import 'package:remote_access/model/ec_users_response.dart';
+import 'package:remote_access/model/ec_vpn.dart';
+import 'package:remote_access/model/ec_vpn_config.dart';
+import 'package:remote_access/model/ec_vpn_configs.dart';
+import 'package:remote_access/model/preferences/admin_preferences.dart';
+import 'package:remote_access/model/preferences/user_preferences.dart';
 import 'package:remote_access/model/remote_access_device.dart';
 import 'package:remote_access/model/rules/ec_tag.dart';
 import 'package:remote_access/model/rules/ec_tags.dart';
@@ -33,7 +40,9 @@ import 'package:remote_access/model/rules/routing_rules.dart';
 import 'package:remote_access/model/user.dart';
 import 'package:remote_access/model/user_profile.dart';
 import 'package:remote_access/model/user_update.dart';
+import 'package:remote_access/utilities/constants.dart';
 import 'package:remote_access/utilities/utilities.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class ApiService implements InterceptorContract {
   Client? _lazyClient;
@@ -55,8 +64,13 @@ abstract class ApiService implements InterceptorContract {
   List<EcUser> currentUsers = [];
   List<RoutingRule> routingRules = [];
   String remoteAccessTagId = '';
+  List<EcInstance> cachedEcInstances = [];
+  late EcInstance currentEcInstance;
+  final SharedPreferencesAsync _preferences = SharedPreferencesAsync();
+  SharedPreferencesAsync get getSharedPreferences => _preferences;
 
   bool loggedInByApiKey = false;
+  bool automaticLogin = false;
 
   String getCachedUser() {
     return cachedUser;
@@ -69,6 +83,8 @@ abstract class ApiService implements InterceptorContract {
   String getCachedApiKey() {
     return cachedApiKey;
   }
+
+  List<EcInstance> get getEcInstances => cachedEcInstances;
 
   Future<User> getCurrentUser() {
     return Future.value(currentUser ?? User(loggedIn: false));
@@ -97,16 +113,10 @@ abstract class ApiService implements InterceptorContract {
       debugPrint(
         'interceptResponse response.statusCode : ${response.statusCode}\ninterceptResponse response.request!.url.path : ${response.request!.url.path}\n',
       );
-      /*
       if (response.request!.url.path != 'v1/authentication/user' &&
           response.request!.url.path != 'v1/authentication/apikey') {
-        if (loggedInByApiKey) {
-          loginWithApiKey(cachedApiKey);
-        } else {
-          login(cachedUser, cachedPassword);
-        }
+        resetUserLogin();
       }
-      */
     }
     return response;
   }
@@ -119,12 +129,16 @@ abstract class ApiService implements InterceptorContract {
     if (query != null) {
       return Uri(
         scheme: 'https',
-        host: 'api-sbx.everyware.io',
+        host: currentEcInstance.apiEndpoint,
         path: path,
         query: query,
       );
     } else {
-      return Uri(scheme: 'https', host: 'api-sbx.everyware.io', path: path);
+      return Uri(
+        scheme: 'https',
+        host: currentEcInstance.apiEndpoint,
+        path: path,
+      );
     }
   }
 
@@ -177,8 +191,10 @@ abstract class ApiService implements InterceptorContract {
     return await client.delete(_getUri(path), headers: headers);
   }
 
-  Future<int> login(String user, String password);
-  Future<int> loginWithApiKey(String apiKey);
+  void resetUserLogin();
+  void setAutomaticLogin(String apiKey, String user, String pwd);
+  Future<int> login(String user, String password, EcInstance instance);
+  Future<int> loginWithApiKey(String apiKey, EcInstance instance);
   Future<bool> logout();
   Stream<User> streamLoggedIn();
   Future<List<EcUser>> getUsers();
@@ -192,12 +208,50 @@ abstract class ApiService implements InterceptorContract {
   Future<List<RoutingRule>> getRoutingRules(bool forceRefresh);
   Future<List<RoutingRule>> getFilteredRoutingRules();
   Future<bool> putRoutingRules(List<RoutingRule> rules);
-  Future<bool> tunVpnConnect(String accountId, String deviceId);
+  Future<EcVpn> tunVpnConnect(String accountId, String deviceId);
   Future<bool> tunVpnDisconnect(String accountId, String deviceId);
+  Future<EcInstance> loadEcInstancesAndReturnCurrent();
+  Future<AdminPreferences> getAdminPreferences();
+  Future<UserPreferences> getUserPreferences();
+  Future<EcVpnConfig> getVpnConfig(String accountId);
 }
 
 class ApiServiceImpl extends ApiService {
   ApiServiceImpl() {
+    resetUserLogin();
+  }
+
+  @override
+  Future<AdminPreferences> getAdminPreferences() async {
+    bool? allowDevServers = await getSharedPreferences.getBool(
+      ApplicationPreferences.allowDevelopmentServers,
+    );
+
+    return Future.value(
+      AdminPreferences(allowDevelopmentServers: allowDevServers ?? true),
+    );
+  }
+
+  @override
+  Future<UserPreferences> getUserPreferences() async {
+    String openVpnBinFolder =
+        await getSharedPreferences.getString(
+          ApplicationPreferences.openVpnBinFolder,
+        ) ??
+        'C:\\Program Files\\OpenVPN\\bin';
+    return Future.value(UserPreferences(openVpnBinFolder: openVpnBinFolder));
+  }
+
+  @override
+  void setAutomaticLogin(String apiKey, String user, String pwd) {
+    automaticLogin = true;
+    cachedApiKey = apiKey;
+    cachedUser = user;
+    cachedPassword = pwd;
+  }
+
+  @override
+  void resetUserLogin() {
     _loggedStatusSink.add(User(loggedIn: false));
   }
 
@@ -209,12 +263,6 @@ class ApiServiceImpl extends ApiService {
     final response = await doGet('/v1/authentication/info');
     if (response.statusCode == 200) {
       AuthInfo userInfo = AuthInfo.fromJson(jsonDecode(response.body));
-      if (userInfo.rolePermission.length == 1 &&
-          userInfo.rolePermission[0].permission.action == null) {
-        debugPrint("ADMIN");
-      } else {
-        debugPrint("REMOTE USER");
-      }
       User profile = await getUserFromAuthInfo(userInfo);
       _loggedStatusSink.add(profile);
       return true;
@@ -228,7 +276,8 @@ class ApiServiceImpl extends ApiService {
   Stream<User> streamLoggedIn() => loggedStatus;
 
   @override
-  Future<int> login(String user, String password) async {
+  Future<int> login(String user, String password, EcInstance instance) async {
+    currentEcInstance = instance;
     if (!await checkAuthToken()) {
       final response = await doPost(
         path: 'v1/authentication/user',
@@ -243,7 +292,6 @@ class ApiServiceImpl extends ApiService {
           jsonDecode(response.body),
         );
         authToken = authResponse.tokenId;
-        debugPrint('login authToken : $authToken');
         await checkAuthToken();
         loggedInByApiKey = false;
         return 0; // success
@@ -261,7 +309,8 @@ class ApiServiceImpl extends ApiService {
   }
 
   @override
-  Future<int> loginWithApiKey(String apiKey) async {
+  Future<int> loginWithApiKey(String apiKey, EcInstance instance) async {
+    currentEcInstance = instance;
     // TEST API KEY ieKbUmj+GINcIFKs8qn1FF1IHVUrHnk9wVhkB4bq
     if (!await checkAuthToken()) {
       final response = await doPost(
@@ -276,7 +325,6 @@ class ApiServiceImpl extends ApiService {
           jsonDecode(response.body),
         );
         authToken = authResponse.tokenId;
-        debugPrint('loginWithApiKey authToken : $authToken');
         await checkAuthToken();
         loggedInByApiKey = true;
         return 0; // success
@@ -331,8 +379,11 @@ class ApiServiceImpl extends ApiService {
 
     int permIndex = 0;
     bool isRemoteUser =
-        ((info.rolePermission.length == 4) &&
-            (info.rolePermission[permIndex].permission.action == 'write' &&
+        ((info.rolePermission.length == 5) &&
+            (info.rolePermission[permIndex].permission.action == 'read' &&
+                info.rolePermission[permIndex++].permission.domain ==
+                    'device') &&
+            (info.rolePermission[permIndex].permission.action == 'execute' &&
                 info.rolePermission[permIndex++].permission.domain ==
                     'device_management') &&
             (info.rolePermission[permIndex].permission.action == 'read' &&
@@ -936,14 +987,15 @@ class ApiServiceImpl extends ApiService {
   }
 
   @override
-  Future<bool> tunVpnConnect(String accountId, String deviceId) async {
+  Future<EcVpn> tunVpnConnect(String accountId, String deviceId) async {
     final response = await doPost(
       path: '/v1/$accountId/devices/$deviceId/vpn/_connect',
     );
     if (response.statusCode == 200) {
-      return Future.value(true);
+      return Future.value(EcVpn.fromJson(jsonDecode(response.body)));
     } else {
-      return Future.value(false);
+      debugPrint('Failed to connect to vpn: ${response.body}');
+      throw Exception('Failed to start device vpn!');
     }
   }
 
@@ -955,7 +1007,88 @@ class ApiServiceImpl extends ApiService {
     if (response.statusCode == 200) {
       return Future.value(true);
     } else {
-      return Future.value(false);
+      debugPrint('Failed to disconnect frpm vpn: ${response.body}');
+      throw Exception('Failed to stop device vpn!');
     }
+  }
+
+  @override
+  Future<EcInstance> loadEcInstancesAndReturnCurrent() async {
+    // First try to load currently cached EcInstance from properties
+
+    String? currentEcAccount = await getSharedPreferences.getString(
+      ApplicationPreferences.ecAccount,
+    );
+    bool? allowDevServers = await getSharedPreferences.getBool(
+      ApplicationPreferences.allowDevelopmentServers,
+    );
+    allowDevServers ?? true;
+    currentEcAccount ?? '';
+    if (getEcInstances.isEmpty) {
+      final response = await client.get(
+        Uri.parse('https://sd.everyware.io/ec/instances'),
+      );
+      if (response.statusCode == 200) {
+        final list = jsonDecode(response.body);
+        for (final element in list['ec_instances']) {
+          EcInstance i = EcInstance.fromJson(element);
+          if (i.type.toUpperCase() == 'PRODUCTION') {
+            cachedEcInstances.add(i);
+          } else if (i.type.toUpperCase() == 'DEVELOPMENT' &&
+              allowDevServers!) {
+            cachedEcInstances.add(i);
+          }
+        }
+      }
+    }
+    if (currentEcAccount!.isEmpty) return cachedEcInstances.first;
+
+    EcInstance read = EcInstance.fromJson(jsonDecode(currentEcAccount));
+    try {
+      return cachedEcInstances.firstWhere((element) => element == read);
+    } catch (e) {
+      return cachedEcInstances.first;
+    }
+  }
+
+  Future<EcVpnConfig> getVpnConfig(String accountId) async {
+    int limit = 20;
+    int offset = 0;
+    bool shouldContinue = true;
+
+    while (shouldContinue) {
+      try {
+        final accountString = accountId;
+        final response = await doGet(
+          'v1/$accountString/vpnServers/_configurations',
+          'limit=$limit&offset=$offset',
+        );
+        if (response.statusCode == 200) {
+          EcVpnConfigs res = EcVpnConfigs.fromJson(jsonDecode(response.body));
+          for (EcVpnConfig element in res.items) {
+            if (element.name == 'OpenVPN_3_0_0') {
+              return Future.value(element);
+            }
+          }
+          if (res.limitExceeded = true) {
+            offset += limit;
+          } else {
+            shouldContinue = false;
+          }
+        } else {
+          // Handle error (e.g., throw an exception, log the error)
+          debugPrint('Failed to fetch data: ${response.statusCode}');
+          shouldContinue = false; // Stop fetching on error.
+          throw Exception('Failed to load data');
+        }
+      } catch (e) {
+        // Handle network or parsing errors
+        debugPrint('An error occurred: $e');
+        shouldContinue = false; // Stop fetching on error.
+        throw Exception('Network or parsing error');
+      }
+    }
+
+    throw Exception('VPN Configuration not found');
   }
 }

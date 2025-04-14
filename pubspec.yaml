@@ -41,6 +41,12 @@ dependencies:
   animated_tree_view: ^2.3.0
   ffi: ^2.1.4
   win32: ^5.12.0
+  shared_preferences: ^2.5.3
+  dart_jsonwebtoken: ^3.2.0
+  ulid: ^2.0.1
+  file_picker: ^10.1.2
+  path_provider: ^2.1.5
+  args: ^2.7.0
 
 dev_dependencies:
   flutter_test:

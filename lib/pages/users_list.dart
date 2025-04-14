@@ -3,6 +3,7 @@ import 'package:remote_access/main.dart';
 import 'package:remote_access/model/credentials.dart';
 import 'package:remote_access/model/ec_user.dart';
 import 'package:remote_access/services/api_service.dart';
+import 'package:remote_access/services/crypto_service.dart';
 import 'package:remote_access/widgets/center_card.dart';
 
 class UsersPage extends StatefulWidget {
@@ -403,6 +404,12 @@ class _UsersPageState extends State<UsersPage> {
     setState(() {
       _isUpdating = false;
     });
+    String token = await getIt<CryptoService>().generateActivationToken(
+      credResult.apiKey,
+      credResult.user.name,
+      credResult.pwd,
+    );
+
     if (context.mounted) {
       showDialog(
         context: context,
@@ -436,6 +443,16 @@ class _UsersPageState extends State<UsersPage> {
                           ? 'NO PASSWORD GENERAETD'
                           : credResult.pwd,
                     ),
+                  ],
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Email token: ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Flexible(child: SelectableText(token)),
                   ],
                 ),
               ],
